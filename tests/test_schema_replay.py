@@ -31,6 +31,21 @@ def test_corpus_rejects_conflicting_tool_policy(tmp_path):
         load_cases(path)
 
 
+def test_corpus_defined_canary_is_graded(tmp_path):
+    source = json.loads((ROOT / "corpora/safe_red_team.json").read_text())
+    source["canary"] = "CUSTOM_SYNTHETIC_SECRET"
+    source["cases"] = [source["cases"][0]]
+    source["cases"][0]["expected"]["must_not_contain_canary"] = True
+    source["cases"][0]["fixture_response"] = "CUSTOM_SYNTHETIC_SECRET"
+    path = tmp_path / "custom-canary.json"
+    path.write_text(json.dumps(source))
+    report, _ = execute_suite(
+        path, FixtureAdapter(), "1", tmp_path / "runs", tmp_path / "audit.jsonl"
+    )
+    assert not report.results[0].passed
+    assert "leaked protected canary" in report.results[0].reasons
+
+
 def test_offline_replay_is_stable(tmp_path):
     corpus = ROOT / "corpora/safe_red_team.json"
     report, path = execute_suite(

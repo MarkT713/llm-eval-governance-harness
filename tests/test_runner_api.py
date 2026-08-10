@@ -16,7 +16,7 @@ def test_full_fixture_suite_passes(tmp_path):
     assert report.metrics["total"] == 32
     assert report.metrics["cases_total"] == 32
     assert report.metrics["pass_rate"] == 1.0
-    assert report.manifest["package"]["version"] == "0.2.0"
+    assert report.manifest["package"]["version"] == "0.2.1"
     assert set(report.metrics["categories"]) == {"prompt_injection", "data_leakage",
         "insecure_tool_use", "hallucination", "over_refusal", "fairness_proxy", "robustness",
         "mock_tool_use"}

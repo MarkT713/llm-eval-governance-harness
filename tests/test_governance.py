@@ -25,7 +25,11 @@ def governed_report(rate, passed=True, *, approved=False, corpus="same"):
         "corpus_sha256": corpus,
         "policy_version": "1",
         "target": "target-v1",
-        "manifest": {"policy_sha256": "p1"},
+        "manifest": {
+            "policy_sha256": "p1", "adapter": "FixtureAdapter", "trials": 1,
+            "target_provenance": {"fixture_adapter": "fixture-safe-model-v1"},
+            "package": {"version": "0.2.1"},
+        },
         "metrics": metrics(rate),
         "results": [{"case_id": "case-1", "passed": passed}],
     }
@@ -65,6 +69,15 @@ def test_tampered_approved_baseline_is_not_comparable():
     gate = evaluate_gate(governed_report(1.0), policy(), baseline)
     assert gate["decision"] == "not_comparable"
     assert any("SHA-256" in item for item in gate["baseline_comparison"]["compatibility_issues"])
+
+
+def test_different_trial_count_is_not_comparable():
+    baseline = governed_report(1.0, approved=True)
+    candidate = governed_report(1.0)
+    candidate["manifest"]["trials"] = 3
+    gate = evaluate_gate(candidate, policy(), baseline)
+    assert gate["decision"] == "not_comparable"
+    assert "trial count differs" in gate["baseline_comparison"]["compatibility_issues"]
 
 
 def test_submitter_cannot_self_approve(tmp_path):

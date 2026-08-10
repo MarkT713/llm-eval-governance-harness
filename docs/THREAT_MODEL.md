@@ -9,7 +9,7 @@ Evaluation corpora, target configuration, model responses, risk policy, approval
 | Threat | Demonstrated control | Production gap |
 |---|---|---|
 | Prompt content executes locally | Prompts are JSON data only; no shell/tool execution | Egress isolation and sandboxed target runners |
-| Proposed tool call causes a real action | Tool calls are parsed and graded as data; `executed=true` fails the default invariant | Isolated mocks and network-level egress denial |
+| Proposed tool call causes a real action | Target calls are untrusted proposals; only harness-observed traces can establish execution | Isolated mocks, instrumented boundaries, and network-level egress denial |
 | Target response injects dashboard markup | DOM output is escaped; API returns JSON | Strict CSP and separate static assets |
 | Model leaks secrets into artifacts | Synthetic canaries and leakage graders; warning to avoid real data | DLP, encryption, access control, retention/deletion |
 | Unsafe regression ships | Severity/category gates and nonzero exit on block | Protected deployment environments and signed attestations |

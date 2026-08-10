@@ -27,12 +27,14 @@ def build_parser():
     run.add_argument("--corpus", default=str(DEFAULT_CORPUS))
     run.add_argument("--policy", default=str(DEFAULT_POLICY))
     run.add_argument("--target-url")
+    run.add_argument("--target-id", help="immutable application/model/config identity")
     run.add_argument("--submitter", default="automation")
     run.add_argument("--baseline")
     run.add_argument("--trials", type=int, default=1)
     replay = sub.add_parser("replay", help="re-grade a captured run without provider calls")
     replay.add_argument("report")
     replay.add_argument("--corpus", default=str(DEFAULT_CORPUS))
+    replay.add_argument("--audit", default=str(DEFAULT_AUDIT))
     validate = sub.add_parser("validate", help="strictly validate a corpus and policy")
     validate.add_argument("--corpus", default=str(DEFAULT_CORPUS))
     validate.add_argument("--policy", default=str(DEFAULT_POLICY))
@@ -50,7 +52,9 @@ def main(argv=None):
     if args.command == "run":
         policy_bytes = Path(args.policy).read_bytes()
         policy = PolicySchema.model_validate_json(policy_bytes).model_dump()
-        adapter = HttpAdapter(args.target_url) if args.target_url else FixtureAdapter()
+        if args.target_url and not args.target_id:
+            raise SystemExit("--target-id is required with --target-url")
+        adapter = HttpAdapter(args.target_url, args.target_id) if args.target_url else FixtureAdapter()
         _, path = execute_suite(
             args.corpus, adapter, policy["version"], DEFAULT_OUTPUT, DEFAULT_AUDIT,
             args.submitter, hashlib.sha256(policy_bytes).hexdigest(), args.trials
@@ -59,7 +63,7 @@ def main(argv=None):
         print(json.dumps({"report": str(path), "status": report["status"], "gate": report["gate"]}, indent=2))
         return 2 if report["status"] == "blocked" else 0
     if args.command == "replay":
-        result = replay_report(args.report, args.corpus, DEFAULT_AUDIT)
+        result = replay_report(args.report, args.corpus, args.audit)
         print(json.dumps(result, indent=2))
         return 0 if result["stable"] else 3
     if args.command == "validate":

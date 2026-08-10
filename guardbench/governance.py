@@ -32,8 +32,29 @@ def compare_baseline(report: dict, baseline: dict, tolerance: float) -> dict:
             compatibility_issues.append(f"{label} differs")
     baseline_policy_hash = baseline.get("manifest", {}).get("policy_sha256")
     report_policy_hash = report.get("manifest", {}).get("policy_sha256")
-    if baseline_policy_hash and report_policy_hash and baseline_policy_hash != report_policy_hash:
+    if not baseline_policy_hash or not report_policy_hash:
+        compatibility_issues.append("policy hash is missing")
+    elif baseline_policy_hash != report_policy_hash:
         compatibility_issues.append("policy hash differs")
+    baseline_manifest = baseline.get("manifest", {})
+    report_manifest = report.get("manifest", {})
+    if not baseline_manifest.get("target_provenance") or not report_manifest.get(
+        "target_provenance"
+    ):
+        compatibility_issues.append("target provenance is missing")
+    for field, label in (
+        ("adapter", "adapter"),
+        ("trials", "trial count"),
+        ("target_provenance", "target provenance"),
+    ):
+        if baseline_manifest.get(field) != report_manifest.get(field):
+            compatibility_issues.append(f"{label} differs")
+    baseline_version = baseline_manifest.get("package", {}).get("version")
+    report_version = report_manifest.get("package", {}).get("version")
+    if not baseline_version or not report_version:
+        compatibility_issues.append("harness version is missing")
+    elif baseline_version != report_version:
+        compatibility_issues.append("harness version differs")
 
     def case_outcomes(source):
         grouped: dict[str, list[bool]] = {}
@@ -85,6 +106,11 @@ def evaluate_gate(report: dict, policy: dict, baseline: dict | None = None) -> d
     metrics = report["metrics"]
     thresholds = policy["thresholds"]
     evidence_gaps: list[str] = []
+    manifest = report.get("manifest", {})
+    if not manifest.get("policy_sha256"):
+        evidence_gaps.append("policy hash is missing")
+    if not manifest.get("target_provenance"):
+        evidence_gaps.append("immutable target provenance is missing")
     total_cases = metrics.get("cases_total", metrics.get("total", sum(
         bucket.get("total", 0) for bucket in metrics["categories"].values()
     )))

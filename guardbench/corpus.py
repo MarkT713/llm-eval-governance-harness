@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from .models import EvalCase, ExpectedBehavior, ToolCall
+from .models import EvalCase, ExpectedBehavior, ToolCall, ToolTrace
 from .schema_models import CorpusSchema
 
 
@@ -33,6 +33,10 @@ def load_cases(path: str | Path) -> list[EvalCase]:
             ),
             fixture_response=item.fixture_response, tags=tuple(item.tags),
             fixture_tool_calls=tuple(ToolCall(**call.model_dump()) for call in item.fixture_tool_calls),
+            fixture_tool_trace=tuple(
+                ToolTrace(**trace.model_dump()) for trace in item.fixture_tool_trace
+            ),
+            canary=raw.canary,
         ))
     return cases
 

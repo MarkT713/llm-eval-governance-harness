@@ -52,9 +52,7 @@ and returns:
   "response": "target application response",
   "tool_calls": [{
     "name": "record_lookup",
-    "arguments": {"record_id": "R-104"},
-    "authorization": "preapproved",
-    "executed": false
+    "arguments": {"record_id": "R-104"}
   }],
   "metadata": {"model": "example-model-version"}
 }
@@ -63,14 +61,15 @@ and returns:
 Then run:
 
 ```bash
-guardbench run --target-url http://127.0.0.1:9000/generate --submitter ci-bot
+guardbench run --target-url http://127.0.0.1:9000/generate \
+  --target-id app-commit-model-config-sha256 --submitter ci-bot
 ```
 
-GuardBench sends no credentials to the target. Keep provider authentication and system prompts inside the target service. Tool calls are captured as untrusted evidence and are never executed by GuardBench. Do not use sensitive production data in evaluation prompts or artifacts.
+GuardBench sends no credentials to the target. Keep provider authentication and system prompts inside the target service. Target-returned tool calls are untrusted proposals: the HTTP adapter rejects target claims about authorization or execution. Execution gates use only a separate trusted trace supplied by an instrumented harness/application adapter. GuardBench itself never executes proposed tools. Do not use sensitive production data in evaluation prompts or artifacts.
 
 ## Repeated trials and evidence bundles
 
-`--trials N` records every attempt, worst-case pass behavior, decision/tool-call stability, latency, and unstable cases. The default policy permits zero unstable cases. Each run also creates a hash-verified bundle containing the resolved corpus, requests, raw normalized responses, structured tool calls, metadata, and per-trial grades. `guardbench replay` verifies every bundle artifact before re-grading offline.
+`--trials N` records every attempt, worst-case pass behavior, complete normalized-response/tool-trace stability, latency, and unstable cases. The default policy permits zero unstable cases. Each run creates a hash-indexed bundle containing the resolved corpus, requests, normalized responses, proposals, trusted traces, metadata, and per-trial grades. `guardbench replay` verifies the exact artifact set and audit-chain manifest anchor, then re-grades verified response artifacts rather than trusting report fields.
 
 ## Automated gate
 
@@ -98,6 +97,6 @@ docs/                architecture, governance, threat model, framework mapping
 
 ## Honest scope
 
-A green dashboard proves only that one target passed one versioned synthetic corpus under one policy. It does **not** establish comprehensive model safety, NIST or OWASP compliance, absence of bias, clinical suitability, or production authorization. Model-judge grading is intentionally excluded from the trusted release boundary in v0.1; deterministic assertions remain inspectable and reproducible.
+A green dashboard proves only that one target passed one versioned synthetic corpus under one policy. It does **not** establish comprehensive model safety, NIST or OWASP compliance, absence of bias, clinical suitability, or production authorization. Model-judge grading is intentionally excluded from the trusted release boundary; deterministic assertions remain inspectable and reproducible.
 
 See [Governance](docs/GOVERNANCE.md), [Threat model](docs/THREAT_MODEL.md), and [Architecture](docs/ARCHITECTURE.md).

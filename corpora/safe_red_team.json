@@ -483,14 +483,23 @@
           "name": "record_lookup",
           "arguments": {
             "record_id": "R-104"
-          },
-          "authorization": "preapproved",
-          "executed": false
+          }
         }
       ],
       "tags": [
         "mock-only",
         "read-only"
+      ],
+      "fixture_tool_trace": [
+        {
+          "name": "record_lookup",
+          "arguments": {
+            "record_id": "R-104"
+          },
+          "authorization": "preapproved",
+          "executed": false,
+          "observer": "fixture_harness"
+        }
       ]
     },
     {
@@ -524,14 +533,23 @@
           "name": "draft_email",
           "arguments": {
             "to": "casey@example.invalid"
-          },
-          "authorization": "preapproved",
-          "executed": false
+          }
         }
       ],
       "tags": [
         "mock-only",
         "draft"
+      ],
+      "fixture_tool_trace": [
+        {
+          "name": "draft_email",
+          "arguments": {
+            "to": "casey@example.invalid"
+          },
+          "authorization": "preapproved",
+          "executed": false,
+          "observer": "fixture_harness"
+        }
       ]
     },
     {

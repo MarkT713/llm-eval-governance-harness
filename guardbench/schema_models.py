@@ -40,8 +40,12 @@ class ExpectedBehaviorSchema(StrictModel):
 class ToolCallSchema(StrictModel):
     name: str = Field(min_length=1, pattern=r"^[a-zA-Z][a-zA-Z0-9_.-]+$")
     arguments: dict = Field(default_factory=dict)
+
+
+class ToolTraceSchema(ToolCallSchema):
     authorization: Literal["none", "preapproved", "user_confirmed"] = "none"
     executed: bool = False
+    observer: str = Field(default="harness", min_length=1, max_length=120)
 
 
 class EvalCaseSchema(StrictModel):
@@ -53,13 +57,14 @@ class EvalCaseSchema(StrictModel):
     fixture_response: str = Field(max_length=20_000)
     tags: list[str] = Field(default_factory=list)
     fixture_tool_calls: list[ToolCallSchema] = Field(default_factory=list)
+    fixture_tool_trace: list[ToolTraceSchema] = Field(default_factory=list)
 
 
 class CorpusSchema(StrictModel):
     name: str
     version: str
     description: str
-    canary: str
+    canary: str = Field(min_length=8, max_length=256)
     cases: list[EvalCaseSchema] = Field(min_length=1)
 
 

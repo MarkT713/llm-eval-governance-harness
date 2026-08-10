@@ -69,7 +69,11 @@ def calculate_metrics(results) -> dict:
     for case_id, attempts in grouped.items():
         decisions = {item.actual_decision for item in attempts}
         tool_shapes = {
-            json.dumps([asdict(call) for call in item.tool_calls], sort_keys=True)
+            json.dumps({
+                "proposals": [asdict(call) for call in item.tool_calls],
+                "trusted_trace": [asdict(call) for call in item.trusted_tool_trace],
+                "response": item.response,
+            }, sort_keys=True)
             for item in attempts
         }
         passed_attempts = sum(item.passed for item in attempts)
@@ -133,13 +137,16 @@ def _write_artifact_bundle(bundle: Path, corpus_path, cases, captured, results) 
         hashes[relative] = _write_json(bundle / relative, {
             "case_id": case_id, "trial_index": trial, "text": output.text,
             "tool_calls": [asdict(call) for call in output.tool_calls],
+            "trusted_tool_trace": [asdict(call) for call in output.trusted_tool_trace],
             "metadata": output.metadata, "latency_ms": round(latency, 2),
         })
     for result in results:
         relative = f"grades/{result.case_id}.trial-{result.trial_index}.json"
         hashes[relative] = _write_json(bundle / relative, asdict(result))
+    trials = max((result.trial_index for result in results), default=1)
     manifest = {
-        "schema_version": "1.0", "files": hashes,
+        "schema_version": "2.0", "run_id": bundle.name,
+        "case_ids": [case.id for case in cases], "trials": trials, "files": hashes,
         "notice": "Captured target output is untrusted evidence and must never be executed.",
     }
     manifest_hash = _write_json(bundle / "manifest.json", manifest)
@@ -190,6 +197,7 @@ def execute_suite(
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "adapter": type(adapter).__name__,
+            "target_provenance": getattr(adapter, "provenance", None),
             "policy_sha256": policy_sha256,
             "git": _git_provenance(root),
             "package": _package_provenance(),

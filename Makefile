@@ -12,7 +12,7 @@ serve:
 verify: lint test
 	python -m compileall -q guardbench
 	guardbench validate
-	rm -rf artifacts/runs artifacts/audit.jsonl
+	rm -rf artifacts/runs/* artifacts/audit.jsonl
 	guardbench run --submitter ci-bot --trials 3
 	guardbench replay artifacts/runs/*.json
 	guardbench verify-audit

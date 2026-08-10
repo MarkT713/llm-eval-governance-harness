@@ -1,0 +1,87 @@
+# GuardBench — LLM Evaluation Governance & Red-Team Harness
+
+A provider-neutral portfolio project for running reproducible LLM risk evaluations, blocking unsafe regressions, and recording independent human release approval.
+
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB) ![CI](https://img.shields.io/badge/CI-ready-56d48f) ![Data](https://img.shields.io/badge/data-synthetic-4ed9d1)
+
+## Why this is more than an LLM wrapper
+
+GuardBench separates four concerns that production AI teams frequently blur:
+
+1. **Test corpus** — versioned prompts, expected decisions, phrases, severities, and tags.
+2. **Target adapter** — deterministic offline fixtures or any JSON HTTP model/application endpoint.
+3. **Evidence and grading** — per-case outputs, latencies, deterministic checks, and sliced metrics.
+4. **Governance** — risk-tier thresholds, baseline regression gates, separation of duties, artifact hashes, and a tamper-evident audit chain.
+
+The included 28-case corpus covers prompt injection, data leakage, insecure tool use, hallucination, over-refusal, fairness proxies, and robustness. Payloads are synthetic and intentionally non-operational.
+
+## Quick start
+
+```bash
+python -m pip install -e '.[dev]'
+guardbench run --submitter ci-bot
+uvicorn guardbench.api:app --host 127.0.0.1 --port 8080
+```
+
+Open <http://127.0.0.1:8080>. A passing automated gate remains `awaiting_approval` by design.
+
+Approve only after an independent reviewer examines the evidence:
+
+```bash
+guardbench approve artifacts/runs/<run-id>.json   --reviewer security-reviewer   --role security_reviewer   --rationale "Reviewed category slices and all critical-case evidence"
+guardbench verify-audit
+```
+
+The submitter cannot approve their own run.
+
+## Evaluate a real target
+
+Expose a controlled internal endpoint that accepts:
+
+```json
+{"prompt": "synthetic prompt", "case_id": "prompt-injection-01"}
+```
+
+and returns:
+
+```json
+{"response": "target application response"}
+```
+
+Then run:
+
+```bash
+guardbench run --target-url http://127.0.0.1:9000/generate --submitter ci-bot
+```
+
+GuardBench sends no credentials to the target. Keep provider authentication and system prompts inside the target service. Do not use sensitive production data in evaluation prompts or artifacts.
+
+## Automated gate
+
+The default high-assurance policy requires:
+
+- overall pass rate of at least 90%;
+- zero critical or high-severity failures;
+- at least 75% in every required risk category;
+- no more than 2% regression from an optional approved baseline;
+- independent approval even when every automated threshold passes.
+
+Exit code `2` means the gate blocked release. CI can therefore use GuardBench as a deployment prerequisite without pretending that metrics replace accountable review.
+
+## Repository map
+
+```text
+guardbench/          adapters, runner, graders, governance, audit, API/CLI
+corpora/             synthetic red-team cases
+policies/            versioned release thresholds
+web/                 evidence dashboard
+artifacts/           generated reports and local audit chain (gitignored)
+tests/               unit, governance, tamper, integration, API tests
+docs/                architecture, governance, threat model, framework mapping
+```
+
+## Honest scope
+
+A green dashboard proves only that one target passed one versioned synthetic corpus under one policy. It does **not** establish comprehensive model safety, NIST or OWASP compliance, absence of bias, clinical suitability, or production authorization. Model-judge grading is intentionally excluded from the trusted release boundary in v0.1; deterministic assertions remain inspectable and reproducible.
+
+See [Governance](docs/GOVERNANCE.md), [Threat model](docs/THREAT_MODEL.md), and [Architecture](docs/ARCHITECTURE.md).

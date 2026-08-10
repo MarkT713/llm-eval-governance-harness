@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import platform
 import subprocess
@@ -11,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
+from . import __version__
 from .adapters import TargetAdapter, normalize_output
 from .audit import append_event
 from .corpus import corpus_hash, load_cases
@@ -29,6 +31,22 @@ def _git_provenance(root: Path) -> dict:
         return {"commit": commit, "dirty": dirty}
     except (OSError, subprocess.CalledProcessError):
         return {"commit": None, "dirty": None}
+
+
+def _package_provenance() -> dict:
+    distribution = importlib.metadata.distribution("guardbench")
+    direct_url = distribution.read_text("direct_url.json")
+    source = None
+    if direct_url:
+        parsed = json.loads(direct_url)
+        vcs = parsed.get("vcs_info", {})
+        if parsed.get("url", "").startswith("https://") and vcs.get("commit_id"):
+            source = {"url": parsed["url"], "commit": vcs["commit_id"]}
+    return {
+        "version": __version__,
+        "distribution_version": distribution.version,
+        "source": source,
+    }
 
 
 def calculate_metrics(results) -> dict:
@@ -174,6 +192,7 @@ def execute_suite(
             "adapter": type(adapter).__name__,
             "policy_sha256": policy_sha256,
             "git": _git_provenance(root),
+            "package": _package_provenance(),
             "trials": trials,
             "artifact_bundle": bundle_summary,
             "reproducibility_boundary": "deterministic grading and replay; provider output may vary",

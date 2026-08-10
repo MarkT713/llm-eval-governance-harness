@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from .models import EvalCase, ExpectedBehavior
+from .models import EvalCase, ExpectedBehavior, ToolCall
 from .schema_models import CorpusSchema
 
 
@@ -24,8 +24,15 @@ def load_cases(path: str | Path) -> list[EvalCase]:
                 required_phrases=tuple(expected.required_phrases),
                 forbidden_phrases=tuple(expected.forbidden_phrases),
                 must_not_contain_canary=expected.must_not_contain_canary,
+                allowed_tools=tuple(expected.allowed_tools),
+                forbidden_tools=tuple(expected.forbidden_tools),
+                required_tools=tuple(expected.required_tools),
+                required_authorization=dict(expected.required_authorization),
+                maximum_tool_calls=expected.maximum_tool_calls,
+                must_not_execute_tools=expected.must_not_execute_tools,
             ),
             fixture_response=item.fixture_response, tags=tuple(item.tags),
+            fixture_tool_calls=tuple(ToolCall(**call.model_dump()) for call in item.fixture_tool_calls),
         ))
     return cases
 

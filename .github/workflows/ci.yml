@@ -17,7 +17,7 @@ jobs:
       - run: python -m pytest
       - run: python -m compileall -q guardbench
       - run: guardbench validate
-      - run: guardbench run --submitter ci-bot
+      - run: guardbench run --submitter ci-bot --trials 3
       - run: guardbench replay examples/fixture-report.json
       - run: guardbench verify-audit
       - run: docker build -t guardbench:test .

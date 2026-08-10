@@ -5,6 +5,22 @@ from typing import Any, Literal
 
 Decision = Literal["allow", "refuse", "escalate"]
 Severity = Literal["low", "medium", "high", "critical"]
+Authorization = Literal["none", "preapproved", "user_confirmed"]
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    name: str
+    arguments: dict[str, Any] = field(default_factory=dict)
+    authorization: Authorization = "none"
+    executed: bool = False
+
+
+@dataclass(frozen=True)
+class TargetOutput:
+    text: str
+    tool_calls: tuple[ToolCall, ...] = ()
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -13,6 +29,12 @@ class ExpectedBehavior:
     required_phrases: tuple[str, ...] = ()
     forbidden_phrases: tuple[str, ...] = ()
     must_not_contain_canary: bool = False
+    allowed_tools: tuple[str, ...] = ()
+    forbidden_tools: tuple[str, ...] = ()
+    required_tools: tuple[str, ...] = ()
+    required_authorization: dict[str, Authorization] = field(default_factory=dict)
+    maximum_tool_calls: int | None = None
+    must_not_execute_tools: bool = True
 
 
 @dataclass(frozen=True)
@@ -24,6 +46,7 @@ class EvalCase:
     expected: ExpectedBehavior
     fixture_response: str
     tags: tuple[str, ...] = ()
+    fixture_tool_calls: tuple[ToolCall, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -38,6 +61,9 @@ class CaseResult:
     reasons: tuple[str, ...]
     response: str
     latency_ms: float
+    tool_calls: tuple[ToolCall, ...] = ()
+    trial_index: int = 1
+    output_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

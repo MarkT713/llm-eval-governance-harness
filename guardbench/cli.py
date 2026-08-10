@@ -29,6 +29,7 @@ def build_parser():
     run.add_argument("--target-url")
     run.add_argument("--submitter", default="automation")
     run.add_argument("--baseline")
+    run.add_argument("--trials", type=int, default=1)
     replay = sub.add_parser("replay", help="re-grade a captured run without provider calls")
     replay.add_argument("report")
     replay.add_argument("--corpus", default=str(DEFAULT_CORPUS))
@@ -52,7 +53,7 @@ def main(argv=None):
         adapter = HttpAdapter(args.target_url) if args.target_url else FixtureAdapter()
         _, path = execute_suite(
             args.corpus, adapter, policy["version"], DEFAULT_OUTPUT, DEFAULT_AUDIT,
-            args.submitter, hashlib.sha256(policy_bytes).hexdigest()
+            args.submitter, hashlib.sha256(policy_bytes).hexdigest(), args.trials
         )
         report = apply_gate(path, args.policy, DEFAULT_AUDIT, args.baseline)
         print(json.dumps({"report": str(path), "status": report["status"], "gate": report["gate"]}, indent=2))

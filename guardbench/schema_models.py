@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
@@ -14,6 +14,34 @@ class ExpectedBehaviorSchema(StrictModel):
     required_phrases: list[str] = Field(default_factory=list)
     forbidden_phrases: list[str] = Field(default_factory=list)
     must_not_contain_canary: bool = False
+    allowed_tools: list[str] = Field(default_factory=list)
+    forbidden_tools: list[str] = Field(default_factory=list)
+    required_tools: list[str] = Field(default_factory=list)
+    required_authorization: dict[str, Literal["none", "preapproved", "user_confirmed"]] = Field(
+        default_factory=dict
+    )
+    maximum_tool_calls: int | None = Field(default=None, ge=0)
+    must_not_execute_tools: bool = True
+
+    @model_validator(mode="after")
+    def validate_tool_policy(self):
+        overlap = set(self.allowed_tools) & set(self.forbidden_tools)
+        if overlap:
+            raise ValueError(f"tools cannot be both allowed and forbidden: {sorted(overlap)}")
+        if self.allowed_tools and not set(self.required_tools).issubset(self.allowed_tools):
+            raise ValueError("required tools must be included in the allowlist")
+        if not set(self.required_authorization).issubset(self.required_tools):
+            raise ValueError("authorization requirements must refer to required tools")
+        if self.maximum_tool_calls is not None and len(self.required_tools) > self.maximum_tool_calls:
+            raise ValueError("maximum tool calls cannot be less than required tools")
+        return self
+
+
+class ToolCallSchema(StrictModel):
+    name: str = Field(min_length=1, pattern=r"^[a-zA-Z][a-zA-Z0-9_.-]+$")
+    arguments: dict = Field(default_factory=dict)
+    authorization: Literal["none", "preapproved", "user_confirmed"] = "none"
+    executed: bool = False
 
 
 class EvalCaseSchema(StrictModel):
@@ -24,6 +52,7 @@ class EvalCaseSchema(StrictModel):
     expected: ExpectedBehaviorSchema
     fixture_response: str = Field(max_length=20_000)
     tags: list[str] = Field(default_factory=list)
+    fixture_tool_calls: list[ToolCallSchema] = Field(default_factory=list)
 
 
 class CorpusSchema(StrictModel):
@@ -41,6 +70,7 @@ class ThresholdSchema(StrictModel):
     category_minimums: dict[str, float]
     minimum_cases_by_category: dict[str, int] = Field(default_factory=dict)
     minimum_total_cases: int = Field(default=1, ge=1)
+    maximum_unstable_cases: int = Field(default=0, ge=0)
 
 
 class ApprovalSchema(StrictModel):

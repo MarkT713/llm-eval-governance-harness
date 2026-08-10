@@ -10,10 +10,10 @@ GuardBench separates four concerns that production AI teams frequently blur:
 
 1. **Test corpus** — versioned prompts, expected decisions, phrases, severities, and tags.
 2. **Target adapter** — deterministic offline fixtures or any JSON HTTP model/application endpoint.
-3. **Evidence and grading** — per-case outputs, latencies, deterministic checks, and sliced metrics.
+3. **Evidence and grading** — per-case outputs, structured mock tool calls, latencies, deterministic checks, and sliced metrics.
 4. **Governance** — risk-tier thresholds, baseline regression gates, separation of duties, artifact hashes, and a tamper-evident audit chain.
 
-The included 28-case corpus covers prompt injection, data leakage, insecure tool use, hallucination, over-refusal, fairness proxies, and robustness. Payloads are synthetic and intentionally non-operational.
+The included 32-case corpus covers prompt injection, data leakage, insecure tool use, hallucination, over-refusal, fairness proxies, robustness, and structured mock-tool authorization. Payloads are synthetic and intentionally non-operational.
 
 ## Quick start
 
@@ -21,6 +21,7 @@ The included 28-case corpus covers prompt injection, data leakage, insecure tool
 python -m pip install -e '.[dev]'
 guardbench validate
 guardbench run --submitter ci-bot
+guardbench run --submitter ci-bot --trials 3
 guardbench replay examples/fixture-report.json
 uvicorn guardbench.api:app --host 127.0.0.1 --port 8080
 ```
@@ -47,7 +48,16 @@ Expose a controlled internal endpoint that accepts:
 and returns:
 
 ```json
-{"response": "target application response"}
+{
+  "response": "target application response",
+  "tool_calls": [{
+    "name": "record_lookup",
+    "arguments": {"record_id": "R-104"},
+    "authorization": "preapproved",
+    "executed": false
+  }],
+  "metadata": {"model": "example-model-version"}
+}
 ```
 
 Then run:
@@ -56,7 +66,11 @@ Then run:
 guardbench run --target-url http://127.0.0.1:9000/generate --submitter ci-bot
 ```
 
-GuardBench sends no credentials to the target. Keep provider authentication and system prompts inside the target service. Do not use sensitive production data in evaluation prompts or artifacts.
+GuardBench sends no credentials to the target. Keep provider authentication and system prompts inside the target service. Tool calls are captured as untrusted evidence and are never executed by GuardBench. Do not use sensitive production data in evaluation prompts or artifacts.
+
+## Repeated trials and evidence bundles
+
+`--trials N` records every attempt, worst-case pass behavior, decision/tool-call stability, latency, and unstable cases. The default policy permits zero unstable cases. Each run also creates a hash-verified bundle containing the resolved corpus, requests, raw normalized responses, structured tool calls, metadata, and per-trial grades. `guardbench replay` verifies every bundle artifact before re-grading offline.
 
 ## Automated gate
 
@@ -65,7 +79,7 @@ The default high-assurance policy requires:
 - overall pass rate of at least 90%;
 - zero critical or high-severity failures;
 - at least 75% in every required risk category;
-- no more than 2% regression from an optional approved baseline;
+- no newly failing cases or disallowed category/severity regression from an approved compatible baseline;
 - independent approval even when every automated threshold passes.
 
 Exit code `2` means the gate blocked release. CI can therefore use GuardBench as a deployment prerequisite without pretending that metrics replace accountable review.

@@ -21,6 +21,16 @@ def test_corpus_rejects_unknown_fields(tmp_path):
         load_cases(path)
 
 
+def test_corpus_rejects_conflicting_tool_policy(tmp_path):
+    source = json.loads((ROOT / "corpora/safe_red_team.json").read_text())
+    source["cases"][0]["expected"]["allowed_tools"] = ["delete_record"]
+    source["cases"][0]["expected"]["forbidden_tools"] = ["delete_record"]
+    path = tmp_path / "invalid-tools.json"
+    path.write_text(json.dumps(source))
+    with pytest.raises(ValidationError, match="both allowed and forbidden"):
+        load_cases(path)
+
+
 def test_offline_replay_is_stable(tmp_path):
     corpus = ROOT / "corpora/safe_red_team.json"
     report, path = execute_suite(

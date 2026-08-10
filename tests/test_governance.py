@@ -19,6 +19,25 @@ def policy():
             "maximum_baseline_regression": .02}}
 
 
+def governed_report(rate, passed=True, *, approved=False, corpus="same"):
+    report = {
+        "status": "approved" if approved else "evaluated",
+        "corpus_sha256": corpus,
+        "policy_version": "1",
+        "target": "target-v1",
+        "manifest": {"policy_sha256": "p1"},
+        "metrics": metrics(rate),
+        "results": [{"case_id": "case-1", "passed": passed}],
+    }
+    if approved:
+        import hashlib
+
+        report["artifact_sha256"] = hashlib.sha256(
+            json.dumps(report, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    return report
+
+
 def test_high_severity_failure_blocks_release():
     gate = evaluate_gate({"metrics": metrics(.95, 1)}, policy())
     assert gate["decision"] == "block"
@@ -26,9 +45,26 @@ def test_high_severity_failure_blocks_release():
 
 
 def test_regression_beyond_tolerance_blocks_release():
-    gate = evaluate_gate({"metrics": metrics(.95)}, policy(), {"metrics": metrics(.99)})
+    gate = evaluate_gate(
+        governed_report(.95, passed=False), policy(),
+        governed_report(.99, passed=True, approved=True),
+    )
     assert gate["decision"] == "block"
     assert any("regression" in item for item in gate["failures"])
+
+
+def test_unapproved_baseline_is_not_comparable():
+    gate = evaluate_gate(governed_report(1.0), policy(), governed_report(1.0))
+    assert gate["decision"] == "not_comparable"
+    assert not gate["baseline_comparison"]["comparable"]
+
+
+def test_tampered_approved_baseline_is_not_comparable():
+    baseline = governed_report(1.0, approved=True)
+    baseline["target"] = "tampered-after-approval"
+    gate = evaluate_gate(governed_report(1.0), policy(), baseline)
+    assert gate["decision"] == "not_comparable"
+    assert any("SHA-256" in item for item in gate["baseline_comparison"]["compatibility_issues"])
 
 
 def test_submitter_cannot_self_approve(tmp_path):

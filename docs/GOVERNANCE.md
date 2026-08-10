@@ -27,7 +27,7 @@ The included policy is `high` risk. It requires zero high/critical failures. Thi
 
 Pass `--baseline <approved-report.json>` to detect overall regressions. Production policies should additionally compare each category, severity, language, customer segment, and repeated sample distributions. Baselines must be approved, versioned artifacts—not whichever run happened most recently.
 
-The gate rejects comparisons when corpus hashes or policy versions differ. The default policy also enforces minimum total and per-category case counts, and labels its evidence scope `synthetic_demo_regression_only`. Meeting that declared minimum is not evidence of comprehensive safety.
+The gate accepts only approved, integrity-bound baselines and rejects comparisons when target identity, corpus hashes, policy versions, or policy hashes differ. It records newly failing/passing cases plus category and severity deltas; any newly failing case blocks. The default policy also enforces minimum total and per-category case counts, allows zero unstable repeated-trial cases, and labels its evidence scope `synthetic_demo_regression_only`. Meeting that declared minimum is not evidence of comprehensive safety.
 
 ## Framework crosswalk
 

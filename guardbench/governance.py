@@ -28,7 +28,9 @@ def compare_baseline(report: dict, baseline: dict, tolerance: float) -> dict:
             compatibility_issues.append("baseline artifact SHA-256 is invalid")
     for field, label in (("corpus_sha256", "corpus hash"), ("policy_version", "policy version"),
                          ("target", "target")):
-        if baseline.get(field) != report.get(field):
+        if not baseline.get(field) or not report.get(field):
+            compatibility_issues.append(f"{label} is missing")
+        elif baseline.get(field) != report.get(field):
             compatibility_issues.append(f"{label} differs")
     baseline_policy_hash = baseline.get("manifest", {}).get("policy_sha256")
     report_policy_hash = report.get("manifest", {}).get("policy_sha256")
@@ -38,16 +40,14 @@ def compare_baseline(report: dict, baseline: dict, tolerance: float) -> dict:
         compatibility_issues.append("policy hash differs")
     baseline_manifest = baseline.get("manifest", {})
     report_manifest = report.get("manifest", {})
-    if not baseline_manifest.get("target_provenance") or not report_manifest.get(
-        "target_provenance"
-    ):
-        compatibility_issues.append("target provenance is missing")
     for field, label in (
         ("adapter", "adapter"),
         ("trials", "trial count"),
         ("target_provenance", "target provenance"),
     ):
-        if baseline_manifest.get(field) != report_manifest.get(field):
+        if not baseline_manifest.get(field) or not report_manifest.get(field):
+            compatibility_issues.append(f"{label} is missing")
+        elif baseline_manifest.get(field) != report_manifest.get(field):
             compatibility_issues.append(f"{label} differs")
     baseline_version = baseline_manifest.get("package", {}).get("version")
     report_version = report_manifest.get("package", {}).get("version")

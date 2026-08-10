@@ -22,7 +22,7 @@ python -m pip install -e '.[dev]'
 guardbench validate
 guardbench run --submitter ci-bot
 guardbench run --submitter ci-bot --trials 3
-guardbench replay examples/fixture-report.json
+guardbench replay artifacts/runs/<run-id>.json
 uvicorn guardbench.api:app --host 127.0.0.1 --port 8080
 ```
 
@@ -69,7 +69,9 @@ GuardBench sends no credentials to the target. Keep provider authentication and 
 
 ## Repeated trials and evidence bundles
 
-`--trials N` records every attempt, worst-case pass behavior, complete normalized-response/tool-trace stability, latency, and unstable cases. The default policy permits zero unstable cases. Each run creates a hash-indexed bundle containing the resolved corpus, requests, normalized responses, proposals, trusted traces, metadata, and per-trial grades. `guardbench replay` verifies the exact artifact set and audit-chain manifest anchor, then re-grades verified response artifacts rather than trusting report fields.
+`--trials N` records every attempt, worst-case pass behavior, complete normalized-response/tool-trace stability, latency, and unstable cases. The default policy permits zero unstable cases. Each run creates a hash-indexed bundle containing the resolved corpus, requests, normalized responses, proposals, trusted traces, metadata, and per-trial grades. `guardbench replay` verifies the exact artifact set and audit-chain manifest anchor, then re-grades verified response artifacts rather than trusting report text.
+
+Replay intentionally fails closed when a report has no verified sidecar bundle. The static example report is dashboard sample data, not replay evidence.
 
 ## Automated gate
 

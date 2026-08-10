@@ -23,7 +23,7 @@ def _bundle_path(report_path: Path, bundle_info: dict) -> Path:
 def _verify_bundle(report_path: Path, report: dict, audit_path: Path) -> tuple[dict, Path | None, dict | None]:
     bundle_info = report.get("manifest", {}).get("artifact_bundle")
     if not bundle_info:
-        return {"status": "legacy_report", "verified": None}, None, None
+        return {"status": "bundle_required", "verified": False}, None, None
     if not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}", bundle_info.get("path", "")):
         return {"status": "unsafe_bundle_path", "verified": False}, None, None
     bundle = _bundle_path(report_path, bundle_info)
@@ -67,6 +67,7 @@ def _verify_bundle(report_path: Path, report: dict, audit_path: Path) -> tuple[d
 
     audit_valid, _ = verify_chain(audit_path)
     anchored = False
+    anchor_data = None
     if audit_valid:
         for line in audit_path.read_text(encoding="utf-8").splitlines():
             event = json.loads(line)
@@ -76,11 +77,22 @@ def _verify_bundle(report_path: Path, report: dict, audit_path: Path) -> tuple[d
                 and event.get("data", {}).get("artifact_manifest_sha256") == manifest_hash
             ):
                 anchored = True
+                anchor_data = event["data"]
                 break
     if manifest.get("run_id") != report.get("run_id"):
         mismatches.append("run_id")
     if not anchored:
         mismatches.append("audit_anchor")
+    else:
+        expected_anchor = {
+            "target": report.get("target"),
+            "corpus_sha256": report.get("corpus_sha256"),
+            "pass_rate": report.get("metrics", {}).get("pass_rate"),
+            "trials": report.get("manifest", {}).get("trials"),
+        }
+        for field, expected in expected_anchor.items():
+            if anchor_data.get(field) != expected:
+                mismatches.append(f"audit_{field}")
     result = {
         "status": "valid" if not mismatches else "artifact_mismatch",
         "verified": not mismatches,
@@ -106,60 +118,45 @@ def replay_report(report_path, corpus_path, audit_path) -> dict:
 
     verification, bundle, manifest = _verify_bundle(report_path, report, audit_path)
     if verification["verified"] is False:
+        if verification["status"] == "bundle_required":
+            raise ValueError("verified artifact bundle is required for replay")
         raise ValueError(f"artifact bundle integrity failure: {verification['status']}")
+
+    resolved_corpus_hash = manifest["files"]["resolved-corpus.json"]
+    if actual_hash != resolved_corpus_hash:
+        raise ValueError("supplied corpus differs from the verified resolved corpus")
+    if report.get("corpus_sha256") != resolved_corpus_hash:
+        raise ValueError("report corpus hash differs from the verified resolved corpus")
 
     cases = {case.id: case for case in load_cases(corpus_path)}
     replayed = []
     verified_grades: list[dict] = []
     missing = []
-    if bundle and manifest:
-        if set(manifest["case_ids"]) != set(cases):
-            raise ValueError("artifact case set differs from the supplied corpus")
-        for case_id in manifest["case_ids"]:
-            case = cases[case_id]
-            for trial in range(1, manifest["trials"] + 1):
-                response = json.loads(
-                    (bundle / f"responses/{case_id}.trial-{trial}.json").read_text(encoding="utf-8")
-                )
-                proposals = tuple(ToolCall(**call) for call in response.get("tool_calls", []))
-                trace = tuple(
-                    ToolTrace(**call) for call in response.get("trusted_tool_trace", [])
-                )
-                output = TargetOutput(
-                    text=response["text"], tool_calls=proposals, trusted_tool_trace=trace,
-                    metadata=response.get("metadata", {}),
-                )
-                replayed.append(grade(case, output, response["latency_ms"], trial))
-                verified_grades.append(json.loads(
-                    (bundle / f"grades/{case_id}.trial-{trial}.json").read_text(encoding="utf-8")
-                ))
-    else:
-        for stored in report["results"]:
-            case = cases.get(stored["case_id"])
-            if not case:
-                missing.append(stored["case_id"])
-                continue
-            output = TargetOutput(
-                text=stored["response"],
-                tool_calls=tuple(
-                    ToolCall(name=call["name"], arguments=call.get("arguments", {}))
-                    for call in stored.get("tool_calls", [])
-                ),
-                trusted_tool_trace=tuple(
-                    ToolTrace(**call) for call in stored.get("trusted_tool_trace", [])
-                ),
-                metadata=stored.get("output_metadata", {}),
+    if set(manifest["case_ids"]) != set(cases):
+        raise ValueError("artifact case set differs from the supplied corpus")
+    for case_id in manifest["case_ids"]:
+        case = cases[case_id]
+        for trial in range(1, manifest["trials"] + 1):
+            response = json.loads(
+                (bundle / f"responses/{case_id}.trial-{trial}.json").read_text(encoding="utf-8")
             )
-            replayed.append(grade(
-                case, output, stored["latency_ms"], stored.get("trial_index", 1)
+            proposals = tuple(ToolCall(**call) for call in response.get("tool_calls", []))
+            trace = tuple(ToolTrace(**call) for call in response.get("trusted_tool_trace", []))
+            output = TargetOutput(
+                text=response["text"], tool_calls=proposals, trusted_tool_trace=trace,
+                metadata=response.get("metadata", {}),
+            )
+            replayed.append(grade(case, output, response["latency_ms"], trial))
+            verified_grades.append(json.loads(
+                (bundle / f"grades/{case_id}.trial-{trial}.json").read_text(encoding="utf-8")
             ))
-        verified_grades = report["results"]
 
     replay_grade_dicts = [asdict(item) for item in replayed]
     grades_match_bundle = _grade_view(verified_grades) == _grade_view(replay_grade_dicts)
     report_matches_bundle = _grade_view(report["results"]) == _grade_view(verified_grades)
-    stable = not missing and grades_match_bundle and report_matches_bundle
     replay_metrics = calculate_metrics(replayed)
+    metrics_match_bundle = report.get("metrics") == replay_metrics
+    stable = not missing and grades_match_bundle and report_matches_bundle and metrics_match_bundle
     result = {
         "run_id": report["run_id"],
         "stable": stable,
@@ -168,6 +165,7 @@ def replay_report(report_path, corpus_path, audit_path) -> dict:
         "artifact_bundle": verification,
         "report_matches_verified_bundle": report_matches_bundle,
         "grades_match_verified_responses": grades_match_bundle,
+        "metrics_match_verified_bundle": metrics_match_bundle,
         "original_metrics": report["metrics"],
         "replay_metrics": replay_metrics,
     }

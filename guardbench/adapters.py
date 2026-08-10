@@ -51,6 +51,10 @@ class HttpAdapter:
     timeout_seconds: float = 20.0
     maximum_response_bytes: int = 1_000_000
 
+    def __post_init__(self) -> None:
+        if not self.target_id.strip():
+            raise ValueError("HTTP adapter requires a non-empty immutable target_id")
+
     @property
     def name(self) -> str:
         return f"http:{self.target_id}"

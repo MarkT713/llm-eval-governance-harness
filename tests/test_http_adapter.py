@@ -49,6 +49,12 @@ def test_http_adapter_requires_explicit_identity():
     assert adapter.provenance["target_id"] == "app-model-config-sha"
 
 
+@pytest.mark.parametrize("target_id", ["", "   "])
+def test_http_adapter_rejects_empty_identity(target_id):
+    with pytest.raises(ValueError, match="non-empty immutable target_id"):
+        HttpAdapter("http://127.0.0.1/generate", target_id)
+
+
 def test_http_adapter_rejects_target_execution_claims(monkeypatch):
     payload = {
         "response": "safe",

@@ -80,6 +80,35 @@ def test_different_trial_count_is_not_comparable():
     assert "trial count differs" in gate["baseline_comparison"]["compatibility_issues"]
 
 
+@pytest.mark.parametrize(
+    ("location", "field", "message"),
+    [
+        ("top", "corpus_sha256", "corpus hash is missing"),
+        ("top", "policy_version", "policy version is missing"),
+        ("top", "target", "target is missing"),
+        ("manifest", "adapter", "adapter is missing"),
+        ("manifest", "trials", "trial count is missing"),
+        ("manifest", "target_provenance", "target provenance is missing"),
+    ],
+)
+def test_missing_baseline_provenance_is_not_comparable(location, field, message):
+    baseline = governed_report(1.0, approved=True)
+    candidate = governed_report(1.0)
+    baseline.pop("artifact_sha256")
+    target = baseline if location == "top" else baseline["manifest"]
+    candidate_target = candidate if location == "top" else candidate["manifest"]
+    target.pop(field)
+    candidate_target.pop(field)
+    import hashlib
+
+    baseline["artifact_sha256"] = hashlib.sha256(
+        json.dumps(baseline, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    gate = evaluate_gate(candidate, policy(), baseline)
+    assert gate["decision"] == "not_comparable"
+    assert message in gate["baseline_comparison"]["compatibility_issues"]
+
+
 def test_submitter_cannot_self_approve(tmp_path):
     report = {"run_id": "r1", "submitter": "alice", "status": "awaiting_approval",
               "approvals": [], "gate": {"decision": "conditional_pass"}}

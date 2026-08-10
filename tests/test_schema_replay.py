@@ -66,3 +66,42 @@ def test_replay_rejects_changed_corpus(tmp_path):
     changed.write_text(corpus.read_text() + " ")
     with pytest.raises(ValueError, match="not comparable"):
         replay_report(path, changed, tmp_path / "audit.jsonl")
+
+
+def test_replay_rejects_report_without_verified_bundle(tmp_path):
+    corpus = ROOT / "corpora/safe_red_team.json"
+    _, path = execute_suite(
+        corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
+    )
+    report = json.loads(path.read_text())
+    report["manifest"].pop("artifact_bundle")
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="verified artifact bundle is required"):
+        replay_report(path, corpus, tmp_path / "audit.jsonl")
+
+
+def test_replay_rejects_report_or_corpus_substitution(tmp_path):
+    corpus = ROOT / "corpora/safe_red_team.json"
+    _, path = execute_suite(
+        corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
+    )
+    report = json.loads(path.read_text())
+    report["metrics"]["pass_rate"] = 0.0
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="artifact bundle integrity failure"):
+        replay_report(path, corpus, tmp_path / "audit.jsonl")
+
+    _, path = execute_suite(
+        corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs2", tmp_path / "audit2.jsonl"
+    )
+    changed = tmp_path / "changed-bound.json"
+    source = json.loads(corpus.read_text())
+    source["cases"][0]["prompt"] += " changed"
+    changed.write_text(json.dumps(source))
+    report = json.loads(path.read_text())
+    from guardbench.corpus import corpus_hash
+
+    report["corpus_sha256"] = corpus_hash(changed)
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="artifact bundle integrity failure"):
+        replay_report(path, changed, tmp_path / "audit2.jsonl")

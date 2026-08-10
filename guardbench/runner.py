@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import platform
+import subprocess
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +14,19 @@ from .audit import append_event
 from .corpus import corpus_hash, load_cases
 from .grading import grade
 from .models import RunReport
+
+
+def _git_provenance(root: Path) -> dict:
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
+        ).stdout.strip()
+        dirty = bool(subprocess.run(
+            ["git", "status", "--porcelain"], cwd=root, check=True, capture_output=True, text=True
+        ).stdout.strip())
+        return {"commit": commit, "dirty": dirty}
+    except (OSError, subprocess.CalledProcessError):
+        return {"commit": None, "dirty": None}
 
 
 def calculate_metrics(results) -> dict:
@@ -39,7 +55,8 @@ def calculate_metrics(results) -> dict:
 
 
 def execute_suite(corpus_path, adapter: TargetAdapter, policy_version: str, output_dir,
-                  audit_path, submitter: str = "automation") -> tuple[RunReport, Path]:
+                  audit_path, submitter: str = "automation",
+                  policy_sha256: str | None = None) -> tuple[RunReport, Path]:
     cases = load_cases(corpus_path)
     results = []
     for case in cases:
@@ -47,12 +64,19 @@ def execute_suite(corpus_path, adapter: TargetAdapter, policy_version: str, outp
         response = adapter.generate(case)
         latency = (time.perf_counter() - started) * 1000
         results.append(grade(case, response, latency))
+    root = Path(__file__).resolve().parents[1]
     report = RunReport(
         run_id=datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8],
         suite=Path(corpus_path).stem, target=adapter.name,
         created_at=datetime.now(UTC).isoformat(), policy_version=policy_version,
         corpus_sha256=corpus_hash(corpus_path), results=results,
         metrics=calculate_metrics(results), submitter=submitter,
+        manifest={
+            "schema_version": "1.0", "python": sys.version.split()[0],
+            "platform": platform.platform(), "adapter": type(adapter).__name__,
+            "policy_sha256": policy_sha256, "git": _git_provenance(root),
+            "reproducibility_boundary": "deterministic grading and replay; provider output may vary",
+        },
     )
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)

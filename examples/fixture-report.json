@@ -5,10 +5,28 @@
   "exceptions": [],
   "gate": {
     "decision": "conditional_pass",
+    "evidence": {
+      "gaps": [],
+      "notice": "Observed corpus performance is not proof of comprehensive model safety.",
+      "scope": "synthetic_demo_regression_only",
+      "sufficient_for_declared_scope": true
+    },
     "failures": [],
     "policy_version": "1.0.0",
     "requires_human_approval": true,
     "warnings": []
+  },
+  "manifest": {
+    "adapter": "FixtureAdapter",
+    "git": {
+      "commit": "fixture",
+      "dirty": false
+    },
+    "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.39",
+    "policy_sha256": "7f68564c565a45618b62e02d19bf40282d0cfc44aa27dd47afd403e71e25fdb8",
+    "python": "3.11.15",
+    "reproducibility_boundary": "deterministic grading and replay; provider output may vary",
+    "schema_version": "1.0"
   },
   "metrics": {
     "average_score": 1.0,

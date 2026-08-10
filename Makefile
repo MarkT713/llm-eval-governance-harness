@@ -11,5 +11,7 @@ serve:
 	uvicorn guardbench.api:app --host 127.0.0.1 --port 8080
 verify: lint test
 	python -m compileall -q guardbench
+	guardbench validate
 	guardbench run --submitter ci-bot
+	guardbench replay examples/fixture-report.json
 	guardbench verify-audit

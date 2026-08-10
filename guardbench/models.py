@@ -50,6 +50,7 @@ class RunReport:
     corpus_sha256: str
     results: list[CaseResult]
     metrics: dict[str, Any]
+    manifest: dict[str, Any] = field(default_factory=dict)
     gate: dict[str, Any] = field(default_factory=dict)
     status: str = "evaluated"
     submitter: str = "automation"

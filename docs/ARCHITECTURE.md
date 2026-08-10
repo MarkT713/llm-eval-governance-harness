@@ -21,7 +21,7 @@ Target application ┘                                          │
 
 ## Reproducibility
 
-Each report records corpus SHA-256, target name, policy version, UTC time, per-case response, checks, slices, and latency. Fixture mode is deterministic and suitable for CI. Real model calls can vary; production usage should also pin model/provider versions, generation parameters, system-prompt hashes, and application commit identifiers in a target-specific adapter.
+Each report records corpus and policy SHA-256 values, target and adapter names, policy version, UTC time, Git commit/dirty state, Python/platform details, per-case response, checks, slices, and latency. `guardbench replay` verifies the corpus hash and re-grades captured responses without calling a provider. Fixture mode is deterministic and suitable for CI. Real model calls can vary; production usage should also pin model/provider versions, generation parameters, system-prompt hashes, and application commit identifiers in a target-specific adapter.
 
 ## Deliberate limits
 

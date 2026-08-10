@@ -19,7 +19,9 @@ The included 28-case corpus covers prompt injection, data leakage, insecure tool
 
 ```bash
 python -m pip install -e '.[dev]'
+guardbench validate
 guardbench run --submitter ci-bot
+guardbench replay examples/fixture-report.json
 uvicorn guardbench.api:app --host 127.0.0.1 --port 8080
 ```
 

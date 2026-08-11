@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
-ROOT = Path(__file__).resolve().parents[1]
-RUNS = ROOT / "artifacts" / "runs"
-DASHBOARD = ROOT / "web" / "index.html"
-FIXTURE_REPORT = ROOT / "examples" / "fixture-report.json"
+RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
+STATE_ROOT = Path(os.getenv("GUARDBENCH_ARTIFACT_DIR", "artifacts")).resolve()
+RUNS = STATE_ROOT / "runs"
+DASHBOARD = RESOURCE_ROOT / "web" / "index.html"
+FIXTURE_REPORT = RESOURCE_ROOT / "examples" / "fixture-report.json"
 
-app = FastAPI(title="GuardBench", version="0.1.0", docs_url="/api/docs")
+app = FastAPI(title="GuardBench", version="1.0.0", docs_url="/api/docs")
 
 
 def reports():
@@ -34,11 +36,17 @@ def health():
 
 @app.get("/api/runs")
 def list_runs():
-    return [{
-        "run_id": r["run_id"], "created_at": r["created_at"], "target": r["target"],
-        "status": r["status"], "pass_rate": r["metrics"]["pass_rate"],
-        "failed": r["metrics"]["failed"],
-    } for r in reports()]
+    return [
+        {
+            "run_id": r["run_id"],
+            "created_at": r["created_at"],
+            "target": r["target"],
+            "status": r["status"],
+            "pass_rate": r["metrics"]["pass_rate"],
+            "failed": r["metrics"]["failed"],
+        }
+        for r in reports()
+    ]
 
 
 @app.get("/api/runs/latest")

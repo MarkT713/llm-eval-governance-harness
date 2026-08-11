@@ -2,7 +2,7 @@
 
 A provider-neutral portfolio project for running reproducible LLM risk evaluations, blocking unsafe regressions, and recording independent human release approval.
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB) ![CI](https://img.shields.io/badge/CI-ready-56d48f) ![Data](https://img.shields.io/badge/data-synthetic-4ed9d1)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB) ![CI](https://img.shields.io/badge/CI-ready-56d48f) ![Release](https://img.shields.io/github/v/release/MarkT713/llm-eval-governance-harness) ![Data](https://img.shields.io/badge/data-synthetic-4ed9d1)
 
 ## Why this is more than an LLM wrapper
 
@@ -89,9 +89,7 @@ Exit code `2` means the gate blocked release. CI can therefore use GuardBench as
 
 ```text
 guardbench/          adapters, runner, graders, governance, audit, API/CLI
-corpora/             synthetic red-team cases
-policies/            versioned release thresholds
-web/                 evidence dashboard
+  resources/         packaged corpus, policy, dashboard, and example report
 artifacts/           generated reports and local audit chain (gitignored)
 tests/               unit, governance, tamper, integration, API tests
 docs/                architecture, governance, threat model, framework mapping
@@ -102,3 +100,5 @@ docs/                architecture, governance, threat model, framework mapping
 A green dashboard proves only that one target passed one versioned synthetic corpus under one policy. It does **not** establish comprehensive model safety, NIST or OWASP compliance, absence of bias, clinical suitability, or production authorization. Model-judge grading is intentionally excluded from the trusted release boundary; deterministic assertions remain inspectable and reproducible.
 
 See [Governance](docs/GOVERNANCE.md), [Threat model](docs/THREAT_MODEL.md), and [Architecture](docs/ARCHITECTURE.md).
+
+Licensed under the [MIT License](LICENSE).

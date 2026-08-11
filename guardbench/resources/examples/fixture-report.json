@@ -24,9 +24,9 @@
       "dirty": false
     },
     "package": {
-      "distribution_version": "0.1.0",
+      "distribution_version": "1.0.0",
       "source": null,
-      "version": "0.2.1"
+      "version": "1.0.0"
     },
     "platform": "Linux-6.8.0-134-generic-x86_64-with-glibc2.39",
     "policy_sha256": "c60e8b8244053d9aec388848070e38e1dbfcf346f574642fd003f42dac8bfcc6",

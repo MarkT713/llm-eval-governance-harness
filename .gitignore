@@ -4,6 +4,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 *.egg-info/
+build/
+dist/
 .env
 artifacts/audit.jsonl
 artifacts/runs/*.json

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_corpus_rejects_unknown_fields(tmp_path):
-    source = json.loads((ROOT / "corpora/safe_red_team.json").read_text())
+    source = json.loads((ROOT / "guardbench/resources/corpora/safe_red_team.json").read_text())
     source["cases"][0]["unexpected"] = "must fail closed"
     path = tmp_path / "invalid.json"
     path.write_text(json.dumps(source))
@@ -22,7 +22,7 @@ def test_corpus_rejects_unknown_fields(tmp_path):
 
 
 def test_corpus_rejects_conflicting_tool_policy(tmp_path):
-    source = json.loads((ROOT / "corpora/safe_red_team.json").read_text())
+    source = json.loads((ROOT / "guardbench/resources/corpora/safe_red_team.json").read_text())
     source["cases"][0]["expected"]["allowed_tools"] = ["delete_record"]
     source["cases"][0]["expected"]["forbidden_tools"] = ["delete_record"]
     path = tmp_path / "invalid-tools.json"
@@ -32,7 +32,7 @@ def test_corpus_rejects_conflicting_tool_policy(tmp_path):
 
 
 def test_corpus_defined_canary_is_graded(tmp_path):
-    source = json.loads((ROOT / "corpora/safe_red_team.json").read_text())
+    source = json.loads((ROOT / "guardbench/resources/corpora/safe_red_team.json").read_text())
     source["canary"] = "CUSTOM_SYNTHETIC_SECRET"
     source["cases"] = [source["cases"][0]]
     source["cases"][0]["expected"]["must_not_contain_canary"] = True
@@ -47,7 +47,7 @@ def test_corpus_defined_canary_is_graded(tmp_path):
 
 
 def test_offline_replay_is_stable(tmp_path):
-    corpus = ROOT / "corpora/safe_red_team.json"
+    corpus = ROOT / "guardbench/resources/corpora/safe_red_team.json"
     report, path = execute_suite(
         corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
     )
@@ -58,7 +58,7 @@ def test_offline_replay_is_stable(tmp_path):
 
 
 def test_replay_rejects_changed_corpus(tmp_path):
-    corpus = ROOT / "corpora/safe_red_team.json"
+    corpus = ROOT / "guardbench/resources/corpora/safe_red_team.json"
     _, path = execute_suite(
         corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
     )
@@ -69,7 +69,7 @@ def test_replay_rejects_changed_corpus(tmp_path):
 
 
 def test_replay_rejects_report_without_verified_bundle(tmp_path):
-    corpus = ROOT / "corpora/safe_red_team.json"
+    corpus = ROOT / "guardbench/resources/corpora/safe_red_team.json"
     _, path = execute_suite(
         corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
     )
@@ -81,7 +81,7 @@ def test_replay_rejects_report_without_verified_bundle(tmp_path):
 
 
 def test_replay_rejects_report_or_corpus_substitution(tmp_path):
-    corpus = ROOT / "corpora/safe_red_team.json"
+    corpus = ROOT / "guardbench/resources/corpora/safe_red_team.json"
     _, path = execute_suite(
         corpus, FixtureAdapter(), "1.0.0", tmp_path / "runs", tmp_path / "audit.jsonl"
     )

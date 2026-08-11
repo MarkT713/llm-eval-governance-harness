@@ -10,16 +10,28 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_full_fixture_suite_passes(tmp_path):
-    report, path = execute_suite(ROOT / "corpora/safe_red_team.json", FixtureAdapter(), "1",
-                                 tmp_path / "runs", tmp_path / "audit.jsonl")
+    report, path = execute_suite(
+        ROOT / "guardbench/resources/corpora/safe_red_team.json",
+        FixtureAdapter(),
+        "1",
+        tmp_path / "runs",
+        tmp_path / "audit.jsonl",
+    )
     assert path.exists()
     assert report.metrics["total"] == 32
     assert report.metrics["cases_total"] == 32
     assert report.metrics["pass_rate"] == 1.0
-    assert report.manifest["package"]["version"] == "0.2.1"
-    assert set(report.metrics["categories"]) == {"prompt_injection", "data_leakage",
-        "insecure_tool_use", "hallucination", "over_refusal", "fairness_proxy", "robustness",
-        "mock_tool_use"}
+    assert report.manifest["package"]["version"] == "1.0.0"
+    assert set(report.metrics["categories"]) == {
+        "prompt_injection",
+        "data_leakage",
+        "insecure_tool_use",
+        "hallucination",
+        "over_refusal",
+        "fairness_proxy",
+        "robustness",
+        "mock_tool_use",
+    }
 
 
 def test_dashboard_and_health_are_available():

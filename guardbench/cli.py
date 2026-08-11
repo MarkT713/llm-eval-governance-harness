@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from .adapters import FixtureAdapter, HttpAdapter
@@ -13,15 +14,18 @@ from .replay import replay_report
 from .runner import execute_suite
 from .schema_models import PolicySchema
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CORPUS = ROOT / "corpora" / "safe_red_team.json"
-DEFAULT_POLICY = ROOT / "policies" / "default.json"
-DEFAULT_OUTPUT = ROOT / "artifacts" / "runs"
-DEFAULT_AUDIT = ROOT / "artifacts" / "audit.jsonl"
+RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
+STATE_ROOT = Path(os.getenv("GUARDBENCH_ARTIFACT_DIR", "artifacts")).resolve()
+DEFAULT_CORPUS = RESOURCE_ROOT / "corpora" / "safe_red_team.json"
+DEFAULT_POLICY = RESOURCE_ROOT / "policies" / "default.json"
+DEFAULT_OUTPUT = STATE_ROOT / "runs"
+DEFAULT_AUDIT = STATE_ROOT / "audit.jsonl"
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="guardbench", description="LLM evaluation governance harness")
+    parser = argparse.ArgumentParser(
+        prog="guardbench", description="LLM evaluation governance harness"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="execute an evaluation and apply release policy")
     run.add_argument("--corpus", default=str(DEFAULT_CORPUS))
@@ -54,13 +58,25 @@ def main(argv=None):
         policy = PolicySchema.model_validate_json(policy_bytes).model_dump()
         if args.target_url and not args.target_id:
             raise SystemExit("--target-id is required with --target-url")
-        adapter = HttpAdapter(args.target_url, args.target_id) if args.target_url else FixtureAdapter()
+        adapter = (
+            HttpAdapter(args.target_url, args.target_id) if args.target_url else FixtureAdapter()
+        )
         _, path = execute_suite(
-            args.corpus, adapter, policy["version"], DEFAULT_OUTPUT, DEFAULT_AUDIT,
-            args.submitter, hashlib.sha256(policy_bytes).hexdigest(), args.trials
+            args.corpus,
+            adapter,
+            policy["version"],
+            DEFAULT_OUTPUT,
+            DEFAULT_AUDIT,
+            args.submitter,
+            hashlib.sha256(policy_bytes).hexdigest(),
+            args.trials,
         )
         report = apply_gate(path, args.policy, DEFAULT_AUDIT, args.baseline)
-        print(json.dumps({"report": str(path), "status": report["status"], "gate": report["gate"]}, indent=2))
+        print(
+            json.dumps(
+                {"report": str(path), "status": report["status"], "gate": report["gate"]}, indent=2
+            )
+        )
         return 2 if report["status"] == "blocked" else 0
     if args.command == "replay":
         result = replay_report(args.report, args.corpus, args.audit)
@@ -73,7 +89,16 @@ def main(argv=None):
         return 0
     if args.command == "approve":
         report = approve(args.report, args.reviewer, args.role, args.rationale, DEFAULT_AUDIT)
-        print(json.dumps({"run_id": report["run_id"], "status": report["status"], "artifact_sha256": report["artifact_sha256"]}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "run_id": report["run_id"],
+                    "status": report["status"],
+                    "artifact_sha256": report["artifact_sha256"],
+                },
+                indent=2,
+            )
+        )
         return 0
     valid, message = verify_chain(DEFAULT_AUDIT)
     print(message)

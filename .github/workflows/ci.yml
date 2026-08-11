@@ -12,12 +12,43 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: python -m pip install --upgrade 'pip>=26.1.2' 'setuptools>=83' wheel
       - run: python -m pip install -e '.[dev]'
       - run: ruff check .
       - run: python -m pytest
+      - run: pip-audit
+      - name: Build and validate isolated wheel
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python -m venv /tmp/guardbench-wheel
+          /tmp/guardbench-wheel/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/guardbench-wheel/bin/guardbench validate
       - run: python -m compileall -q guardbench
       - run: guardbench validate
       - run: guardbench run --submitter ci-bot --trials 3
       - run: guardbench replay artifacts/runs/*.json
       - run: guardbench verify-audit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guardbench-evidence
+          path: |
+            artifacts/runs/
+            artifacts/audit.jsonl
       - run: docker build -t guardbench:test .
+      - name: Audit final container dependencies and packaging-tool removal
+        run: |
+          docker run --rm guardbench:test python -c "import importlib.util; assert importlib.util.find_spec('pip') is None"
+          container_id=$(docker create guardbench:test)
+          docker cp "$container_id":/usr/local/lib/python3.12/site-packages /tmp/guardbench-image-site
+          docker rm "$container_id"
+          pip-audit --path /tmp/guardbench-image-site
+      - name: Exercise read-only dashboard and evidence API
+        run: |
+          docker run -d --name guardbench-ci --read-only --tmpfs /tmp \
+            --security-opt no-new-privileges --cap-drop ALL \
+            -p 127.0.0.1:8780:8080 guardbench:test
+          python scripts/verify_container.py
+      - name: Clean up container verification
+        if: always()
+        run: docker rm -f guardbench-ci 2>/dev/null || true
